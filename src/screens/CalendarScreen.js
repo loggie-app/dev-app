@@ -1,12 +1,60 @@
 import { View, Text, SafeAreaView, FlatList, Animated, TouchableOpacity } from 'react-native';
 import { layout, typography, common, colors } from '../components/common/styles';
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
+import * as collectionService from '../services/collectionService';
+import { normalizeDate } from '../utils/dateUtils';
+import CalendarEntryList from '../components/calendar/CalendarEntryList';
 
 export default function CalendarScreen() {
   const [currentIndex, setCurrentIndex] = useState(12);
-  const [selectedDate, setSelectedDate] = useState(null); // Add selected date state
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [collections, setCollections] = useState([]);
+  const [dateEntries, setDateEntries] = useState({});  // Store entries by date
+  const [selectedDateEntries, setSelectedDateEntries] = useState([]);
   const flatListRef = useRef(null);
   const scrollY = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    loadCollectionsData();
+  }, []);
+
+  useEffect(() => {
+    if (selectedDate) {
+      const normalizedDate = normalizeDate(selectedDate).getTime();
+      setSelectedDateEntries(dateEntries[normalizedDate] || []);
+    }
+  }, [selectedDate, dateEntries]);
+
+  const loadCollectionsData = async () => {
+    try {
+      const loadedCollections = await collectionService.loadCollections();
+      setCollections(loadedCollections);
+
+      // Load all entries and organize them by date
+      const entriesByDate = {};
+      await Promise.all(loadedCollections.map(async (collection) => {
+        const entries = await collectionService.loadCollectionEntries(collection.id);
+        entries.forEach(entry => {
+          const normalizedDate = normalizeDate(new Date(entry.date)).getTime();
+          if (!entriesByDate[normalizedDate]) {
+            entriesByDate[normalizedDate] = [];
+          }
+          entriesByDate[normalizedDate].push({
+            ...entry,
+            collectionName: collection.name
+          });
+        });
+      }));
+      setDateEntries(entriesByDate);
+    } catch (error) {
+      console.error('Error loading calendar data:', error);
+    }
+  };
+
+  const hasEntriesForDate = (date) => {
+    const normalizedDate = normalizeDate(date).getTime();
+    return dateEntries[normalizedDate]?.length > 0;
+  };
 
   const generateMonths = () => {
     const months = [];
@@ -40,6 +88,7 @@ export default function CalendarScreen() {
         date: currentDate,
         day: currentDate.getDate(),
         isToday: currentDate.toDateString() === new Date().toDateString(),
+        hasEntries: hasEntriesForDate(currentDate)
       });
     }
     return calendarDays;
@@ -88,6 +137,18 @@ export default function CalendarScreen() {
         >
           {item.day}
         </Text>
+        {item.hasEntries && !isSelected && (
+          <View
+            style={{
+              width: 4,
+              height: 4,
+              borderRadius: 2,
+              backgroundColor: colors.primary,
+              position: 'absolute',
+              bottom: 2,
+            }}
+          />
+        )}
       </TouchableOpacity>
     );
   };
@@ -140,22 +201,30 @@ export default function CalendarScreen() {
 
   return (
     <SafeAreaView style={layout.safeArea}>
-      <Animated.FlatList
-        data={months}
-        ref={flatListRef}
-        keyExtractor={(item) => item.key}
-        renderItem={renderMonth}
-        showsVerticalScrollIndicator={false}
-        onScroll={handleScroll}
-        onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={viewabilityConfig}
-        initialScrollIndex={currentIndex}
-        getItemLayout={(data, index) => ({
-          length: 300,
-          offset: 300 * index,
-          index,
-        })}
-      />
+      <View style={{ flex: 1 }}>
+        <View style={{ height: 400 }}>
+          <Animated.FlatList
+            data={months}
+            ref={flatListRef}
+            keyExtractor={(item) => item.key}
+            renderItem={renderMonth}
+            showsVerticalScrollIndicator={false}
+            onScroll={handleScroll}
+            onViewableItemsChanged={onViewableItemsChanged}
+            viewabilityConfig={viewabilityConfig}
+            initialScrollIndex={currentIndex}
+            getItemLayout={(data, index) => ({
+              length: 300,
+              offset: 300 * index,
+              index,
+            })}
+          />
+        </View>
+        
+        {selectedDate && (
+          <CalendarEntryList entries={selectedDateEntries} />
+        )}
+      </View>
     </SafeAreaView>
   );
 }

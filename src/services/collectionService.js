@@ -58,18 +58,34 @@ export const loadCollections = async () => {
   }
 };
 
-export const saveCollection = async (collection) => {
+// Replace both saveCollection and createCollection with this new function
+export const saveCollection = async (collectionData, isNew = false) => {
   try {
+    let collectionToSave = collectionData;
+
+    // If this is a new collection, format the data
+    if (isNew) {
+      collectionToSave = {
+        id: Date.now().toString(),
+        createdAt: new Date().toISOString(),
+        ...collectionData,
+        name: collectionData.name.trim(),
+        description: collectionData.description?.trim() || '',
+        customFields: collectionData.type === 'custom' ? collectionData.customFields : null,
+      };
+    }
+
     const existingCollectionsJSON = await AsyncStorage.getItem(COLLECTIONS_KEY);
     const existingCollections = existingCollectionsJSON ? JSON.parse(existingCollectionsJSON) : [];
     
-    const updatedCollections = [...existingCollections, collection];
+    const updatedCollections = [...existingCollections, collectionToSave];
     await AsyncStorage.setItem(COLLECTIONS_KEY, JSON.stringify(updatedCollections));
     
-    return updatedCollections;
+    // Return based on whether it's a new collection or not
+    return isNew ? collectionToSave : updatedCollections;
   } catch (error) {
     console.error('Failed to save collection:', error);
-    throw error;
+    throw new Error(isNew ? 'Failed to create collection. Please try again.' : 'Failed to save collection.');
   }
 };
 
@@ -149,4 +165,16 @@ export const getCollectionStats = async (collection) => {
       return entryDate > new Date(latest) ? entry.date : latest;
     }, null)
   };
+};
+
+
+
+export const validateCollection = (name, type) => {
+  if (!name.trim()) {
+    throw new Error('Collection name is required');
+  }
+  if (!type) {
+    throw new Error('Please select a collection type');
+  }
+  return true;
 };
