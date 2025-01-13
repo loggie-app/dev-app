@@ -9,16 +9,17 @@ export default function HomeScreen({ navigation }) {
   const [collections, setCollections] = useState([]);
   const weekdays = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
-  const getCurrentWeekDates = () => {
-    const currentDate = new Date();
-    const startOfWeek = currentDate.getDate() - currentDate.getDay() + 1; // Start of the week (Monday)
-    return Array.from({ length: 7 }, (_, i) => {
-      const weekDate = new Date();
-      weekDate.setDate(startOfWeek + i);
-      weekDate.setHours(0, 0, 0, 0); // Normalize time to midnight
-      return weekDate;
-    });
-  };
+const getCurrentWeekDates = () => {
+  const currentDate = new Date();
+  const startOfWeek = currentDate.getDate() - (currentDate.getDay() === 0 ? 6 : currentDate.getDay() - 1);
+  return Array.from({ length: 7 }, (_, i) => {
+    const weekDate = new Date();
+    weekDate.setDate(startOfWeek + i);
+    weekDate.setHours(0, 0, 0, 0); // Normalize time to midnight
+    return weekDate;
+  });
+};
+
 
   const calculateTargetStats = (collection, entries) => {
   if (!collection.customFields) return [];
@@ -164,22 +165,24 @@ if ((field.type === 'number' || field.type === 'duration') && field.trackingType
 
           // Highlight only days in the current week
           const currentWeekDates = getCurrentWeekDates();
+const activeDays = entries.reduce((days, entry) => {
+  const entryDate = new Date(entry.date);
+  entryDate.setHours(0, 0, 0, 0); // Normalize time to midnight
 
-          const activeDays = entries.reduce((days, entry) => {
-            const entryDate = new Date(entry.date);
-            entryDate.setHours(0, 0, 0, 0); // Normalize time to midnight
+  currentWeekDates.forEach((weekDate, index) => {
+    const normalizedWeekDate = new Date(weekDate); // Create a normalized copy
+    normalizedWeekDate.setHours(0, 0, 0, 0); // Normalize week date to midnight
 
-            currentWeekDates.forEach((weekDate, index) => {
-              weekDate.setHours(0, 0, 0, 0); // Normalize week date to midnight
-              if (
-                entryDate.getTime() === weekDate.getTime() &&
-                !days.includes(index + 1)
-              ) {
-                days.push(index + 1); // Add day index (1 = Monday, 7 = Sunday)
-              }
-            });
-            return days;
-          }, []);
+    if (
+      entryDate.getTime() === normalizedWeekDate.getTime() &&
+      !days.includes(index + 1)
+    ) {
+      days.push(index + 1); // Add day index (1 = Monday, 7 = Sunday)
+    }
+  });
+  return days;
+}, []);
+
 
           const lastUpdated = entries.reduce((latest, entry) => {
             const entryDate = new Date(entry.date);

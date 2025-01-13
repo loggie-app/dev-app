@@ -42,36 +42,6 @@ export default function AddCollectionScreen({ navigation, route }) {
     }
   };
 
-  const getDefaultHeaders = (collectionType) => {
-    switch (collectionType) {
-      case 'expenses':
-        return {
-          headers: ['id', 'date', 'amount', 'category', 'description', 'tags'],
-          types: ['number', 'date', 'number', 'text', 'text', 'text']
-        };
-      case 'fitness':
-        return {
-          headers: ['id', 'date', 'activity', 'duration', 'distance', 'notes'],
-          types: ['number', 'date', 'text', 'duration', 'number', 'text']
-        };
-      case 'habits':
-        return {
-          headers: ['id', 'date', 'completed', 'notes'],
-          types: ['number', 'date', 'boolean', 'text']
-        };
-      case 'savings':
-        return {
-          headers: ['id', 'date', 'amount', 'category', 'notes'],
-          types: ['number', 'date', 'number', 'text', 'text']
-        };
-      default:
-        return {
-          headers: ['id', 'date'],
-          types: ['number', 'date']
-        };
-    }
-  };
-
   const handleImport = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({ type: 'text/csv' });
@@ -86,12 +56,6 @@ export default function AddCollectionScreen({ navigation, route }) {
 
       const rows = fileContent.split('\n');
       const headers = rows[0]?.split(',') || [];
-      const types = rows[1]?.split(',') || [];
-
-      if (headers.length !== types.length) {
-        Alert.alert('Error', 'Invalid CSV format. Headers and types do not match.');
-        return;
-      }
 
       const existingCollectionsJSON = await AsyncStorage.getItem('collections');
       const existingCollections = existingCollectionsJSON ? JSON.parse(existingCollectionsJSON) : [];
@@ -101,29 +65,8 @@ export default function AddCollectionScreen({ navigation, route }) {
         name: name.replace('.csv', ''),
         type: 'custom',
         createdAt: new Date().toISOString(),
-        headers,
-        types,
+        customFields: headers,
       };
-
-      const csvPath = `${FileSystem.documentDirectory}${newCollection.name.replace(/\s+/g, '_')}.csv`;
-      await FileSystem.writeAsStringAsync(csvPath, fileContent);
-
-      const metadataPath = `${FileSystem.documentDirectory}${newCollection.name.replace(/\s+/g, '_')}_metadata.txt`;
-      const metadataContent = JSON.stringify({
-        name: newCollection.name,
-        type: 'custom',
-        createdAt: newCollection.createdAt,
-        description: 'Imported collection',
-        headers,
-        types,
-        lastModified: new Date().toISOString(),
-        version: '1.0'
-      }, null, 2);
-
-      await FileSystem.writeAsStringAsync(metadataPath, metadataContent);
-
-      newCollection.csvPath = csvPath;
-      newCollection.metadataPath = metadataPath;
 
       const updatedCollections = [...existingCollections, newCollection];
       await AsyncStorage.setItem('collections', JSON.stringify(updatedCollections));
@@ -153,52 +96,21 @@ export default function AddCollectionScreen({ navigation, route }) {
         customFields: type === 'custom' ? customFields : null,
       };
 
-      // Create CSV file with proper headers and types
-      let headers, types;
-      if (type === 'custom' && customFields) {
-        headers = ['id', 'date', ...customFields.map(f => f.name)];
-        types = ['number', 'date', ...customFields.map(f => f.type)];
-      } else {
-        const defaultStructure = getDefaultHeaders(type);
-        headers = defaultStructure.headers;
-        types = defaultStructure.types;
-      }
-
-      const csvContent = [
-        headers.join(','),
-        types.join(',')
-      ].join('\n');
-
       const csvPath = `${FileSystem.documentDirectory}${newCollection.name.replace(/\s+/g, '_')}.csv`;
-      await FileSystem.writeAsStringAsync(csvPath, csvContent);
+      await FileSystem.writeAsStringAsync(csvPath, 'id,date\nnumber,date\n'); // Create default CSV headers
 
-      // Create metadata file
       const metadataPath = `${FileSystem.documentDirectory}${newCollection.name.replace(/\s+/g, '_')}_metadata.txt`;
-      const metadata = {
-        name: newCollection.name,
-        type: newCollection.type,
-        createdAt: newCollection.createdAt,
-        description: newCollection.description || 'No description',
-        customFields: newCollection.customFields,
-        headers,
-        types,
-        lastModified: new Date().toISOString(),
-        version: '1.0'
-      };
-
-      await FileSystem.writeAsStringAsync(metadataPath, JSON.stringify(metadata, null, 2));
+      const metadataContent = `Name: ${newCollection.name}\nCreated On: ${newCollection.createdAt}\nType: ${newCollection.type}\nDescription: ${newCollection.description || 'None'}`;
+      await FileSystem.writeAsStringAsync(metadataPath, metadataContent);
 
       newCollection.csvPath = csvPath;
       newCollection.metadataPath = metadataPath;
-      newCollection.headers = headers;
-      newCollection.types = types;
 
       const updatedCollections = [...existingCollections, newCollection];
       await AsyncStorage.setItem('collections', JSON.stringify(updatedCollections));
 
       navigation.navigate('HomeScreen');
     } catch (error) {
-      console.error('Error:', error);
       Alert.alert('Error', 'Failed to create collection. Please try again.');
     } finally {
       setIsCreating(false);

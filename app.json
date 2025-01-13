@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "xplog",
-    "slug": "xplog",
-    "version": "1.0.0",
+    "name": "Logy",
+    "slug": "loggie-dev",
+    "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -13,7 +13,12 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "app.loggie.ios",
+      "buildNumber": "1.0.5",
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app uses the camera to scan QR codes and upload photos."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -23,6 +28,22 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "45531b06-e0a1-4e2f-bb70-2bd87b89980c"
+      }
+    },
+    "owner": "sodyapplications",
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "15.1"
+          }
+        }
+      ]
+    ]
   }
 }
