@@ -48,3 +48,13 @@ export const getTimeFrameDates = (timeFrame) => {
 
   return { startOfPeriod, endOfPeriod };
 };
+
+export const formatDisplayDate = (dateString) => {
+  if (!dateString) return 'Unknown';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+};

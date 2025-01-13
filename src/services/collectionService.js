@@ -123,3 +123,30 @@ export const deleteEntry = async (collectionId, entryId) => {
     throw error;
   }
 };
+
+export const loadCollectionEntries = async (collectionId) => {
+  try {
+    const entriesKey = getCollectionEntriesKey(collectionId);
+    const entriesJSON = await AsyncStorage.getItem(entriesKey);
+    const entries = entriesJSON ? JSON.parse(entriesJSON) : [];
+    // Sort entries by id to maintain order
+    entries.sort((a, b) => a.id - b.id);
+    return entries;
+  } catch (error) {
+    console.error('Error loading entries:', error);
+    throw error;
+  }
+};
+
+export const getCollectionStats = async (collection) => {
+  const entries = await loadCollectionEntries(collection.id);
+  return {
+    entries,
+    targetStats: calculateTargetStats(collection, entries),
+    entriesCount: entries.length,
+    lastUpdated: entries.reduce((latest, entry) => {
+      const entryDate = new Date(entry.date);
+      return entryDate > new Date(latest) ? entry.date : latest;
+    }, null)
+  };
+};
