@@ -1,9 +1,18 @@
-import { ScrollView, View, Text, SafeAreaView } from 'react-native';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import {
+  ScrollView,
+  View,
+  Text,
+  SafeAreaView,
+  Dimensions,
+  TouchableOpacity,
+} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LineChart } from 'react-native-chart-kit';
 
 export default function ReportScreens() {
   const [collections, setCollections] = useState([]);
+  const [viewType, setViewType] = useState('weekly'); // 'weekly' or 'monthly'
 
   const loadCollections = async () => {
     try {
@@ -18,15 +27,9 @@ export default function ReportScreens() {
           const entriesJSON = await AsyncStorage.getItem(entriesKey);
           const entries = entriesJSON ? JSON.parse(entriesJSON) : [];
 
-          const lastUpdated = entries.reduce((latest, entry) => {
-            const entryDate = new Date(entry.date);
-            return entryDate > new Date(latest) ? entry.date : latest;
-          }, null);
-
           return {
             ...collection,
-            entriesCount: entries.length,
-            lastUpdated,
+            entries,
           };
         })
       );
@@ -41,29 +44,95 @@ export default function ReportScreens() {
     loadCollections();
   }, []);
 
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
+  const formatDataForChart = (entries) => {
+    const groupedData = entries.reduce((acc, entry) => {
+      const date = new Date(entry.date);
+      const key =
+        viewType === 'weekly'
+          ? `Week ${Math.ceil(date.getDate() / 7)}`
+          : `${date.getMonth() + 1}-${date.getFullYear()}`;
+
+      acc[key] = (acc[key] || 0) + entry.value; // Assume entries have 'value'
+      return acc;
+    }, {});
+
+    const labels = Object.keys(groupedData);
+    const data = labels.map((label) => groupedData[label]);
+
+    const cleanData = data.map((value) => (isNaN(value) ? 0 : value));
+
+    return { labels, data: cleanData };
+  };
+
+  const renderLineChart = (entries) => {
+    const { labels, data } = formatDataForChart(entries);
+
+    if (!data || data.length === 0) {
+      return (
+        <Text style={{ color: '#FFFFFF', textAlign: 'center', marginTop: 8 }}>
+          No data available for the selected view.
+        </Text>
+      );
+    }
+
+    return (
+      <LineChart
+        data={{
+          labels,
+          datasets: [{ data }],
+        }}
+        width={Dimensions.get('window').width - 90} // Adjusted chart width
+        height={200} // Chart height
+        yAxisSuffix=""
+        chartConfig={{
+          backgroundColor: '#1C1C1E',
+          backgroundGradientFrom: '#1C1C1E',
+          backgroundGradientTo: '#1C1C1E',
+          decimalPlaces: 0,
+          color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+          labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+          style: { borderRadius: 16 },
+          propsForDots: { r: '6', strokeWidth: '2', stroke: '#FFA726' },
+        }}
+        bezier
+        style={{ marginVertical: 8, borderRadius: 16 }}
+      />
+    );
   };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#000000' }}>
-      <View style={{ padding: 16 }}>
+      <View style={{ paddingHorizontal: 16, paddingVertical: 8 }}>
         <Text style={{ color: '#FFFFFF', fontSize: 28, fontWeight: 'bold' }}>
           Reports
         </Text>
+        <View style={{ flexDirection: 'row', marginTop: 16 }}>
+          <TouchableOpacity
+            onPress={() => setViewType('weekly')}
+            style={{
+              backgroundColor: viewType === 'weekly' ? '#1E90FF' : '#1C1C1E',
+              padding: 10,
+              borderRadius: 8,
+              marginRight: 8,
+            }}
+          >
+            <Text style={{ color: '#FFFFFF', fontSize: 16 }}>Weekly</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setViewType('monthly')}
+            style={{
+              backgroundColor: viewType === 'monthly' ? '#1E90FF' : '#1C1C1E',
+              padding: 10,
+              borderRadius: 8,
+            }}
+          >
+            <Text style={{ color: '#FFFFFF', fontSize: 16 }}>Monthly</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-      <ScrollView
-        contentContainerStyle={{ padding: 16 }}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16 }}>
         {collections.length === 0 ? (
-          <Text style={{ color: '#FFFFFF', fontSize: 16 }}>
+          <Text style={{ color: '#FFFFFF', fontSize: 16, textAlign: 'center', marginTop: 16 }}>
             No collections available.
           </Text>
         ) : (
@@ -74,7 +143,7 @@ export default function ReportScreens() {
                 backgroundColor: '#1C1C1E',
                 borderRadius: 12,
                 padding: 16,
-                marginBottom: 12,
+                marginBottom: 16,
               }}
             >
               <Text
@@ -87,47 +156,13 @@ export default function ReportScreens() {
               >
                 {collection.name}
               </Text>
-              <Text
-                style={{ color: '#A9A9A9', fontSize: 14, marginBottom: 8 }}
-              >
+              <Text style={{ color: '#A9A9A9', fontSize: 14, marginBottom: 8 }}>
                 Type: {collection.type || 'Custom'}
               </Text>
-              <View
-                style={{
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                  marginBottom: 8,
-                }}
-              >
-                <Text
-                  style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '500' }}
-                >
-                  Total Entries:
-                </Text>
-                <Text
-                  style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '500' }}
-                >
-                  {collection.entriesCount || 0}
-                </Text>
-              </View>
-              <View
-                style={{
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                  marginBottom: 8,
-                }}
-              >
-                <Text
-                  style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '500' }}
-                >
-                  Last Updated:
-                </Text>
-                <Text
-                  style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '500' }}
-                >
-                  {formatDate(collection.lastUpdated)}
-                </Text>
-              </View>
+              <Text style={{ color: '#A9A9A9', fontSize: 14, marginBottom: 8 }}>
+                Showing {viewType} data
+              </Text>
+              {renderLineChart(collection.entries)}
             </View>
           ))
         )}
