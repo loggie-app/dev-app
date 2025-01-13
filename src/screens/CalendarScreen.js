@@ -1,13 +1,13 @@
-import { View, Text, SafeAreaView, FlatList, Animated } from 'react-native';
+import { View, Text, SafeAreaView, FlatList, Animated, TouchableOpacity } from 'react-native';
 import { layout, typography, common, colors } from '../components/common/styles';
 import { useRef, useState } from 'react';
 
 export default function CalendarScreen() {
-  const [currentIndex, setCurrentIndex] = useState(12); // Centering on the current month
+  const [currentIndex, setCurrentIndex] = useState(12);
+  const [selectedDate, setSelectedDate] = useState(null); // Add selected date state
   const flatListRef = useRef(null);
   const scrollY = useRef(new Animated.Value(0)).current;
 
-  // Generate months with older months below and newer months above
   const generateMonths = () => {
     const months = [];
     const currentYear = new Date().getFullYear();
@@ -23,7 +23,6 @@ export default function CalendarScreen() {
       });
     }
 
-    // Sort months so scrolling up moves to newer months and down to older months
     return months.reverse();
   };
 
@@ -61,33 +60,41 @@ export default function CalendarScreen() {
     itemVisiblePercentThreshold: 50,
   };
 
-  const renderDay = ({ item }) => (
-    <View
-      style={{
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: 40,
-        height: 40,
-        margin: 4,
-        borderRadius: 20,
-        backgroundColor: item.isToday ? colors.primary : 'transparent',
-      }}
-    >
-      <Text
+  const renderDay = ({ item }) => {
+    const isSelected = selectedDate && item.date.toDateString() === selectedDate.toDateString();
+    
+    return (
+      <TouchableOpacity
+        onPress={() => setSelectedDate(item.date)}
         style={{
-          color: item.isToday ? colors.text.primary : colors.text.secondary,
-          fontWeight: item.isToday ? 'bold' : 'normal',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 40,
+          height: 40,
+          margin: 4,
+          borderRadius: 20,
+          backgroundColor: isSelected 
+            ? colors.primary 
+            : item.isToday 
+              ? colors.primary 
+              : 'transparent',
         }}
       >
-        {item.day}
-      </Text>
-    </View>
-  );
+        <Text
+          style={{
+            color: (isSelected || item.isToday) ? colors.text.primary : colors.text.secondary,
+            fontWeight: (isSelected || item.isToday) ? 'bold' : 'normal',
+          }}
+        >
+          {item.day}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
 
   const renderMonth = ({ item, index }) => {
     const calendarData = generateCalendarData(item.year, item.month);
 
-    // Animate opacity based on current view index
     const opacity = scrollY.interpolate({
       inputRange: [
         index * 300 - 300,
@@ -100,7 +107,6 @@ export default function CalendarScreen() {
 
     return (
       <Animated.View style={{ marginBottom: 16, opacity }}>
-        {/* Month Header */}
         <Text
           style={[
             typography.header,
@@ -110,7 +116,6 @@ export default function CalendarScreen() {
           {item.label}
         </Text>
 
-        {/* Weekdays */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-around' }}>
           {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => (
             <Text
@@ -122,7 +127,6 @@ export default function CalendarScreen() {
           ))}
         </View>
 
-        {/* Calendar Grid */}
         <FlatList
           data={calendarData}
           keyExtractor={(item) => item.date.toISOString()}
