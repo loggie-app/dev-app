@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Logy",
+    "name": "Loggie",
     "slug": "loggie-dev",
-    "version": "1.0.3",
+    "version": "1.0.5",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -15,7 +15,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "app.loggie.ios",
-      "buildNumber": "1.0.5",
+      "buildNumber": "1.0.7",
       "infoPlist": {
         "NSCameraUsageDescription": "This app uses the camera to scan QR codes and upload photos."
       }
@@ -34,7 +34,7 @@
         "projectId": "45531b06-e0a1-4e2f-bb70-2bd87b89980c"
       }
     },
-    "owner": "sodyapplications",
+    "owner": "splatapps",
     "plugins": [
       [
         "expo-build-properties",

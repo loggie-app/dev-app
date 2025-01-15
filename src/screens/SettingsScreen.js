@@ -30,7 +30,7 @@ export default function SettingsScreen() {
       {/* Footer */}
       <View style={styles.footer}>
         <Text style={styles.footerText}>
-          This app is still being developed. Thank you for your support!
+          Thank you for your support!
         </Text>
         <View style={styles.logoContainer}>
           <Image
