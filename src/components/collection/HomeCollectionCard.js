@@ -21,10 +21,15 @@ const HomeCollectionCard = ({ collection, onPress }) => {
 
     const getCurrentWeekDates = () => {
       const currentDate = new Date();
-      const startOfWeek = currentDate.getDate() - (currentDate.getDay() === 0 ? 6 : currentDate.getDay() - 1);
+      const startOfWeek = new Date(currentDate);
+      const day = currentDate.getDay();
+      const diff = day === 0 ? 6 : day - 1;
+      startOfWeek.setDate(currentDate.getDate() - diff);
+      startOfWeek.setHours(0, 0, 0, 0);
+      
       return Array.from({ length: 7 }, (_, i) => {
-        const weekDate = new Date();
-        weekDate.setDate(startOfWeek + i);
+        const weekDate = new Date(startOfWeek);
+        weekDate.setDate(startOfWeek.getDate() + i);
         weekDate.setHours(0, 0, 0, 0);
         return weekDate;
       });
@@ -71,6 +76,15 @@ const HomeCollectionCard = ({ collection, onPress }) => {
         })}
       </View>
     );
+  };
+
+  const getStatusIndicator = (stat) => {
+    if (stat.trackingType === 'Set Target') {
+      return stat.complete ? ' ✅ Target Met' : ' ❌';
+    } else if (stat.trackingType === 'Set Limit') {
+      return stat.complete ? ' ✅ Under Limit' : ' ❌ Over Limit';
+    }
+    return '';
   };
 
   return (
@@ -126,38 +140,44 @@ const HomeCollectionCard = ({ collection, onPress }) => {
 
         {collection.targetStats && collection.targetStats.length > 0 && (
           <View style={{ marginTop: 8 }}>
-            {collection.targetStats.map((stat) => (
-              <Text
-                key={stat.fieldName}
-                style={[
-                  typography.caption,
-                  {
-                    color: colors.primary,
-                    marginBottom: 2,
-                  },
-                ]}
-              >
-                {stat.type === 'boolean'
-                  ? `${stat.fieldName}: ${stat.count}/${stat.targetValue} ${stat.timeFrame}${
-                      stat.complete ? ' ✅' : ''
-                    }`
-                  : stat.type === 'number'
-                  ? `${stat.fieldName}: ${stat.total}/${stat.value} ${stat.timeFrame}${
-                      stat.complete
-                        ? stat.trackingType === 'Set Limit'
-                          ? ' ✅ Under Limit'
-                          : ' ✅ Target Met'
-                        : ''
-                    }`
-                  : stat.type === 'duration'
-                  ? `${stat.fieldName}: ${stat.currentHours}h ${stat.currentMinutes}m / ${
-                      stat.targetHours
-                    }h ${stat.targetMinutes}m ${stat.timeFrame}${
-                      stat.complete ? ' ✅ Target Met' : ''
-                    }`
-                  : null}
-              </Text>
-            ))}
+            {collection.targetStats.map((stat) => {
+              if (stat.type === 'duration') {
+                return (
+                  <Text
+                    key={stat.fieldName}
+                    style={[
+                      typography.caption,
+                      {
+                        color: colors.primary,
+                        marginBottom: 2,
+                      },
+                    ]}
+                  >
+                    {`${stat.fieldName}: ${stat.currentHours}h ${stat.currentMinutes}m/${stat.targetHours}h ${stat.targetMinutes}m ${stat.timeFrame}${getStatusIndicator(stat)}`}
+                  </Text>
+                );
+              }
+              return (
+                <Text
+                  key={stat.fieldName}
+                  style={[
+                    typography.caption,
+                    {
+                      color: colors.primary,
+                      marginBottom: 2,
+                    },
+                  ]}
+                >
+                  {stat.type === 'boolean'
+                    ? `${stat.fieldName}: ${stat.count}/${stat.targetValue} ${stat.timeFrame}${
+                        stat.complete ? ' ✅' : ' ❌'
+                      }`
+                    : stat.type === 'number'
+                    ? `${stat.fieldName}: ${stat.total}/${stat.value} ${stat.timeFrame}${getStatusIndicator(stat)}`
+                    : null}
+                </Text>
+              );
+            })}
           </View>
         )}
       </View>

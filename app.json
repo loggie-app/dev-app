@@ -2,7 +2,7 @@
   "expo": {
     "name": "Loggie",
     "slug": "loggie-dev",
-    "version": "1.0.5",
+    "version": "1.0.14",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -15,16 +15,17 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "app.loggie.ios",
-      "buildNumber": "1.0.7",
+      "buildNumber": "1.0.14",
       "infoPlist": {
         "NSCameraUsageDescription": "This app uses the camera to scan QR codes and upload photos."
       }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/icon-avatar.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "app.loggie.android"
     },
     "web": {
       "favicon": "./assets/favicon.png"

@@ -1,3 +1,5 @@
+// src/utils/validationUtils.js
+
 import { getTimeFrameDates } from './dateUtils';
 import { convertDurationToMinutes } from './durationUtils';
 
@@ -151,10 +153,19 @@ export const validateFormData = (formData, collection, existingEntries) => {
         const limitCheck = checkDurationLimitsAndTargets(field, hours, minutes, existingEntries);
         if (limitCheck) {
           if (limitCheck.type === 'limit') {
-            errors.push(limitCheck.message);
+            warnings.push(limitCheck.message); // Changed from errors to warnings
           } else if (limitCheck.type === 'target') {
             warnings.push(limitCheck.message);
           }
+        }
+      }
+    } else if (field.type === 'number' && formData[field.name]) {
+      const limitCheck = checkNumberFieldLimitsAndTargets(field, formData[field.name], existingEntries);
+      if (limitCheck) {
+        if (limitCheck.type === 'limit') {
+          warnings.push(limitCheck.message); // Changed from errors to warnings
+        } else if (limitCheck.type === 'target') {
+          warnings.push(limitCheck.message);
         }
       }
     }

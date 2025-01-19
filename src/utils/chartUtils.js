@@ -1,3 +1,5 @@
+// src/utils/chartUtils.js
+
 export const findBreakpoint = (data, threshold) => {
   let runningTotal = 0;
   for (let i = 0; i < data.length; i++) {
@@ -20,18 +22,29 @@ export const findBreakpoint = (data, threshold) => {
   return null;
 };
 
-export const calculateTimeframeData = (entries, field, timeframe, startDate) => {
-  let data = [];
-  let cumulativeData = [];
-  let runningTotal = 0;
-  
-  const getDateValue = (date, field, entries) => {
-    const dayEntries = entries.filter(entry => {
-      const entryDate = new Date(entry.date);
-      return entryDate.toDateString() === date.toDateString();
-    });
+export const getStartOfWeek = (date) => {
+  const d = new Date(date);
+  const day = d.getDay();
+  // If Sunday (0), go back 6 days to get to previous Monday
+  // For other days, go back (day - 1) days to get to Monday
+  const diff = d.getDate() - (day === 0 ? 6 : day - 1);
+  const monday = new Date(d.setDate(diff));
+  monday.setHours(0, 0, 0, 0);
+  return monday;
+};
 
-    return dayEntries.reduce((sum, entry) => {
+export const aggregateValues = (entries, field, date) => {
+  const dayStart = new Date(date);
+  dayStart.setHours(0, 0, 0, 0);
+  const dayEnd = new Date(date);
+  dayEnd.setHours(23, 59, 59, 999);
+
+  return entries
+    .filter(entry => {
+      const entryDate = new Date(entry.date);
+      return entryDate >= dayStart && entryDate <= dayEnd;
+    })
+    .reduce((sum, entry) => {
       if (field.type === 'boolean') {
         return sum + (entry[field.name] === true ? 1 : 0);
       } else if (field.type === 'number') {
@@ -43,42 +56,4 @@ export const calculateTimeframeData = (entries, field, timeframe, startDate) => 
       }
       return sum;
     }, 0);
-  };
-
-  if (timeframe === 'weekly') {
-    for (let i = 0; i < 7; i++) {
-      const currentDate = new Date(startDate);
-      currentDate.setDate(startDate.getDate() + i);
-      const value = getDateValue(currentDate, field, entries);
-      
-      data.push(value);
-      runningTotal += value;
-      cumulativeData.push(runningTotal);
-    }
-  } else {
-    // Monthly view - group by weeks
-    for (let i = 0; i < 4; i++) {
-      let weekTotal = 0;
-      for (let j = 0; j < 7; j++) {
-        const currentDate = new Date(startDate);
-        currentDate.setDate(startDate.getDate() + (i * 7) + j);
-        weekTotal += getDateValue(currentDate, field, entries);
-      }
-      data.push(weekTotal);
-      runningTotal += weekTotal;
-      cumulativeData.push(runningTotal);
-    }
-  }
-
-  return {
-    data,
-    cumulativeData
-  };
-};
-
-export const getStartOfWeek = (date) => {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  return new Date(d.setDate(diff));
 };

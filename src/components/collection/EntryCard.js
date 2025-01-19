@@ -6,7 +6,7 @@ import { formatDate } from '../../utils/dateUtils';
 
 const EntryCard = ({ entry, onDelete }) => {
   const renderField = (key) => {
-    if (key === 'id' || key === 'createdAt' || key === 'date') {
+    if (key === 'id' || key === 'createdAt' || key === 'date' || key === 'uniqueKey') {
       return null;
     }
 

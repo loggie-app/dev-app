@@ -1,230 +1,211 @@
+import React, { useRef, useMemo, useCallback } from 'react';
 import { View, Text, SafeAreaView, FlatList, Animated, TouchableOpacity } from 'react-native';
-import { layout, typography, common, colors } from '../components/common/styles';
-import { useRef, useState, useEffect } from 'react';
-import * as collectionService from '../services/collectionService';
-import { normalizeDate } from '../utils/dateUtils';
+import { layout, typography, colors } from '../components/common/styles';
 import CalendarEntryList from '../components/calendar/CalendarEntryList';
+import { useCalendarData } from '../hooks/useCalendarData';
+import { 
+  MONTHS_TO_SHOW,
+  ITEM_HEIGHT,
+  WEEKDAYS,
+  generateMonthsData,
+  generateCalendarData
+} from '../utils/calendarUtils';
 
-export default function CalendarScreen() {
-  const [currentIndex, setCurrentIndex] = useState(12);
-  const [selectedDate, setSelectedDate] = useState(null);
-  const [collections, setCollections] = useState([]);
-  const [dateEntries, setDateEntries] = useState({});  // Store entries by date
-  const [selectedDateEntries, setSelectedDateEntries] = useState([]);
+const CalendarScreen = () => {
+  const {
+    dateEntries,
+    dateStatuses,
+    selectedDate,
+    selectedDateEntries,
+    setSelectedDate
+  } = useCalendarData();
+
   const flatListRef = useRef(null);
   const scrollY = useRef(new Animated.Value(0)).current;
+  const currentIndex = MONTHS_TO_SHOW - 13; // Center on current month
 
-  useEffect(() => {
-    loadCollectionsData();
-  }, []);
-
-  useEffect(() => {
-    if (selectedDate) {
-      const normalizedDate = normalizeDate(selectedDate).getTime();
-      setSelectedDateEntries(dateEntries[normalizedDate] || []);
-    }
-  }, [selectedDate, dateEntries]);
-
-  const loadCollectionsData = async () => {
-    try {
-      const loadedCollections = await collectionService.loadCollections();
-      setCollections(loadedCollections);
-
-      // Load all entries and organize them by date
-      const entriesByDate = {};
-      await Promise.all(loadedCollections.map(async (collection) => {
-        const entries = await collectionService.loadCollectionEntries(collection.id);
-        entries.forEach(entry => {
-          const normalizedDate = normalizeDate(new Date(entry.date)).getTime();
-          if (!entriesByDate[normalizedDate]) {
-            entriesByDate[normalizedDate] = [];
-          }
-          entriesByDate[normalizedDate].push({
-            ...entry,
-            collectionName: collection.name
-          });
-        });
-      }));
-      setDateEntries(entriesByDate);
-    } catch (error) {
-      console.error('Error loading calendar data:', error);
-    }
-  };
-
-  const hasEntriesForDate = (date) => {
-    const normalizedDate = normalizeDate(date).getTime();
-    return dateEntries[normalizedDate]?.length > 0;
-  };
-
-  const generateMonths = () => {
-    const months = [];
-    const currentYear = new Date().getFullYear();
-    const currentMonth = new Date().getMonth();
-
-    for (let offset = -12; offset <= 12; offset++) {
-      const monthDate = new Date(currentYear, currentMonth + offset, 1);
-      months.push({
-        key: `${monthDate.getFullYear()}-${monthDate.getMonth()}`,
-        year: monthDate.getFullYear(),
-        month: monthDate.getMonth(),
-        label: monthDate.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }),
-      });
-    }
-
-    return months.reverse();
-  };
-
-  const months = generateMonths();
-
-  const generateCalendarData = (year, month) => {
-    const startOfMonth = new Date(year, month, 1);
-    const endOfMonth = new Date(year, month + 1, 0);
-    const daysInMonth = endOfMonth.getDate();
-
-    const calendarDays = [];
-    for (let i = 1; i <= daysInMonth; i++) {
-      const currentDate = new Date(year, month, i);
-      calendarDays.push({
-        date: currentDate,
-        day: currentDate.getDate(),
-        isToday: currentDate.toDateString() === new Date().toDateString(),
-        hasEntries: hasEntriesForDate(currentDate)
-      });
-    }
-    return calendarDays;
-  };
+  const months = useMemo(() => generateMonthsData(), []);
 
   const handleScroll = Animated.event(
     [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-    { useNativeDriver: false }
+    { useNativeDriver: true }
   );
 
-  const onViewableItemsChanged = ({ viewableItems }) => {
-    if (viewableItems.length > 0) {
-      setCurrentIndex(viewableItems[0].index);
+  const renderDay = useCallback(({ item, index }) => {
+    if (item.isPadding) {
+      return (
+        <View 
+          style={{ 
+            width: '14.28%', // 100% / 7 for equal column widths
+            aspectRatio: 1,
+            padding: 4 
+          }} 
+        />
+      );
     }
-  };
 
-  const viewabilityConfig = {
-    itemVisiblePercentThreshold: 50,
-  };
-
-  const renderDay = ({ item }) => {
     const isSelected = selectedDate && item.date.toDateString() === selectedDate.toDateString();
     
     return (
       <TouchableOpacity
         onPress={() => setSelectedDate(item.date)}
         style={{
+          width: '14.28%', // 100% / 7 for equal column widths
+          aspectRatio: 1,
+          padding: 4
+        }}
+      >
+        <View style={{
+          flex: 1,
           alignItems: 'center',
           justifyContent: 'center',
-          width: 40,
-          height: 40,
-          margin: 4,
           borderRadius: 20,
           backgroundColor: isSelected 
             ? colors.primary 
             : item.isToday 
-              ? colors.primary 
-              : 'transparent',
-        }}
-      >
-        <Text
-          style={{
-            color: (isSelected || item.isToday) ? colors.text.primary : colors.text.secondary,
-            fontWeight: (isSelected || item.isToday) ? 'bold' : 'normal',
-          }}
-        >
-          {item.day}
-        </Text>
-        {item.hasEntries && !isSelected && (
-          <View
+              ? 'rgba(128, 128, 128, 0.3)' 
+              : item.status?.hasExceededLimit 
+                ? 'rgba(255, 59, 48, 0.2)' 
+                : item.status?.hasMetTarget 
+                  ? 'rgba(52, 199, 89, 0.2)' 
+                  : 'transparent',
+        }}>
+          <Text
             style={{
-              width: 4,
-              height: 4,
-              borderRadius: 2,
-              backgroundColor: colors.primary,
-              position: 'absolute',
-              bottom: 2,
+              color: isSelected ? colors.text.primary : item.isToday ? colors.text.primary : colors.text.secondary,
+              fontWeight: (isSelected || item.isToday) ? 'bold' : 'normal',
             }}
-          />
-        )}
+          >
+            {item.day}
+          </Text>
+          {item.hasEntries && !isSelected && (
+            <View
+              style={{
+                width: 4,
+                height: 4,
+                borderRadius: 2,
+                backgroundColor: colors.primary,
+                position: 'absolute',
+                bottom: 2,
+              }}
+            />
+          )}
+        </View>
       </TouchableOpacity>
     );
-  };
+  }, [selectedDate, setSelectedDate]);
 
-  const renderMonth = ({ item, index }) => {
-    const calendarData = generateCalendarData(item.year, item.month);
-
+  const renderMonth = useCallback(({ item, index }) => {
+    const calendarData = generateCalendarData(item.year, item.month, dateEntries, dateStatuses);
+    
     const opacity = scrollY.interpolate({
       inputRange: [
-        index * 300 - 300,
-        index * 300,
-        index * 300 + 300,
+        (index - 1) * ITEM_HEIGHT,
+        index * ITEM_HEIGHT,
+        (index + 1) * ITEM_HEIGHT,
       ],
-      outputRange: [0.5, 1, 0.5],
+      outputRange: [0.3, 1, 0.3],
       extrapolate: 'clamp',
     });
 
     return (
-      <Animated.View style={{ marginBottom: 16, opacity }}>
-        <Text
-          style={[
-            typography.header,
-            { textAlign: 'center', marginBottom: 16 },
-          ]}
-        >
+      <Animated.View 
+        style={{ 
+          opacity,
+          height: ITEM_HEIGHT,
+          paddingBottom: 60,
+          marginBottom: 20
+        }}
+      >
+        <Text style={[typography.header, { 
+          textAlign: 'center', 
+          marginBottom: 24,
+          marginTop: 16,
+          fontSize: 32,
+          fontWeight: 'bold'
+        }]}>
           {item.label}
         </Text>
 
-        <View style={{ flexDirection: 'row', justifyContent: 'space-around' }}>
-          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => (
-            <Text
-              key={index}
-              style={[typography.body, { textAlign: 'center', width: 40 }]}
+        {/* Weekday Headers */}
+        <View style={{ 
+          flexDirection: 'row', 
+          justifyContent: 'space-around', 
+          paddingHorizontal: 4,
+          marginBottom: 8
+        }}>
+          {WEEKDAYS.map((day, index) => (
+            <View 
+              key={index} 
+              style={{ 
+                width: '14.28%', // 100% / 7 for equal column widths
+                alignItems: 'center' 
+              }}
             >
-              {day}
-            </Text>
+              <Text style={typography.body}>{day}</Text>
+            </View>
           ))}
         </View>
 
-        <FlatList
-          data={calendarData}
-          keyExtractor={(item) => item.date.toISOString()}
-          numColumns={7}
-          renderItem={renderDay}
-          contentContainerStyle={{ marginTop: 16 }}
-        />
+        {/* Calendar Days Grid */}
+        <View style={{ flex: 1 }}>
+          <FlatList
+            data={calendarData}
+            numColumns={7}
+            renderItem={renderDay}
+            keyExtractor={item => item.key}
+            scrollEnabled={false}
+            removeClippedSubviews={true}
+            initialNumToRender={42}
+            maxToRenderPerBatch={42}
+            windowSize={1}
+            style={{ flex: 1 }}
+            contentContainerStyle={{ flexGrow: 1 }}
+          />
+        </View>
       </Animated.View>
     );
-  };
+  }, [dateEntries, dateStatuses, renderDay, scrollY]);
 
   return (
     <SafeAreaView style={layout.safeArea}>
       <View style={{ flex: 1 }}>
-        <View style={{ height: 400 }}>
+        <Animated.View style={{ 
+          flex: selectedDate ? 0.6 : 1,
+          height: selectedDate ? undefined : '100%'
+        }}>
           <Animated.FlatList
-            data={months}
             ref={flatListRef}
-            keyExtractor={(item) => item.key}
+            data={months}
+            keyExtractor={item => item.key}
             renderItem={renderMonth}
             showsVerticalScrollIndicator={false}
             onScroll={handleScroll}
-            onViewableItemsChanged={onViewableItemsChanged}
-            viewabilityConfig={viewabilityConfig}
             initialScrollIndex={currentIndex}
-            getItemLayout={(data, index) => ({
-              length: 300,
-              offset: 300 * index,
+            getItemLayout={(_, index) => ({
+              length: ITEM_HEIGHT,
+              offset: ITEM_HEIGHT * index,
               index,
             })}
+            maxToRenderPerBatch={3}
+            windowSize={5}
+            removeClippedSubviews={true}
           />
-        </View>
+        </Animated.View>
         
         {selectedDate && (
-          <CalendarEntryList entries={selectedDateEntries} />
+          <Animated.View style={{ 
+            flex: 0.4,
+            borderTopWidth: 1,
+            borderTopColor: '#2C2C2E',
+            backgroundColor: colors.background
+          }}>
+            <CalendarEntryList entries={selectedDateEntries} />
+          </Animated.View>
         )}
       </View>
     </SafeAreaView>
   );
-}
+};
+
+export default React.memo(CalendarScreen);

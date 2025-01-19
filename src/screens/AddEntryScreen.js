@@ -1,3 +1,5 @@
+// src/screens/AddEntryScreen.js
+
 import { useState, useEffect } from 'react';
 import { View, Text, SafeAreaView, TouchableOpacity, ScrollView, Alert, Platform } from 'react-native';
 import { layout, typography, colors, common } from '../components/common/styles';
@@ -55,8 +57,32 @@ export default function AddEntryScreen({ route, navigation }) {
       return;
     }
 
+    // Show warnings but don't block saving
     if (warnings.length > 0) {
-      Alert.alert('Achievement', warnings.join('\n'));
+      Alert.alert(
+        'Warning',
+        warnings.join('\n'),
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+          {
+            text: 'Save Anyway',
+            onPress: async () => {
+              try {
+                await formService.saveFormEntry(collection.id, formData, existingEntries);
+                navigation.goBack();
+              } catch (error) {
+                console.error('Error saving entry:', error);
+                Alert.alert('Error', 'Failed to save entry. Please try again.');
+              }
+            },
+          },
+        ],
+        { cancelable: true }
+      );
+      return;
     }
 
     try {

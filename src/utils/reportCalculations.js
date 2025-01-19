@@ -1,3 +1,5 @@
+// src/utils/reportCalculations.js
+
 export const calculatePeriodValue = (value, originalTimeFrame, targetTimeFrame) => {
   if (originalTimeFrame === targetTimeFrame) return value;
 
@@ -13,9 +15,9 @@ export const calculatePeriodValue = (value, originalTimeFrame, targetTimeFrame) 
   }
 
   return value;
-};
+}; 
 
-export const aggregateFieldEntries = (entries, field, date, viewType) => {
+export const aggregateFieldEntries = (entries, field, date) => {
   const dayStart = new Date(date);
   dayStart.setHours(0, 0, 0, 0);
   
@@ -29,17 +31,15 @@ export const aggregateFieldEntries = (entries, field, date, viewType) => {
 
   switch (field.type) {
     case 'boolean':
-      // Count number of 'true' entries for Yes/No fields
+      // Ensure exact count for boolean values
       return dayEntries.reduce((count, entry) => 
         entry[field.name] === true ? count + 1 : count, 0);
 
     case 'number':
-      // Sum all number entries
       return dayEntries.reduce((sum, entry) => 
         sum + (parseFloat(entry[field.name]) || 0), 0);
 
     case 'duration':
-      // Convert all durations to minutes and sum
       return dayEntries.reduce((sum, entry) => {
         const hours = parseInt(entry[`${field.name}_hours`], 10) || 0;
         const minutes = parseInt(entry[`${field.name}_minutes`], 10) || 0;

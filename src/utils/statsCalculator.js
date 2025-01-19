@@ -1,3 +1,7 @@
+// src/utils/statsCalculator.js
+
+import { getCurrentWeekDates } from './dateUtils';
+
 const calculateBooleanStats = (field, entries, now) => {
   if (!field.target) return null;
 
@@ -7,19 +11,25 @@ const calculateBooleanStats = (field, entries, now) => {
   const filteredEntries = entries.filter(entry => {
     if (entry[field.name] !== true) return false;
     const entryDate = new Date(entry.date);
+    entryDate.setHours(0, 0, 0, 0);
 
-    if (timeFrame === 'day') {
-      return entryDate.toDateString() === now.toDateString();
-    } else if (timeFrame === 'week') {
-      const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
-      const endOfWeek = new Date(startOfWeek);
-      endOfWeek.setDate(startOfWeek.getDate() + 6);
+    if (timeFrame === 'week') {
+      const weekDates = getCurrentWeekDates();
+      const startOfWeek = weekDates[0];
+      const endOfWeek = new Date(weekDates[6]);
+      endOfWeek.setHours(23, 59, 59, 999);
       return entryDate >= startOfWeek && entryDate <= endOfWeek;
     } else if (timeFrame === 'month') {
       return (
         entryDate.getMonth() === now.getMonth() &&
         entryDate.getFullYear() === now.getFullYear()
       );
+    } else if (timeFrame === 'day') {
+      const today = new Date(now);
+      today.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(today);
+      endOfDay.setHours(23, 59, 59, 999);
+      return entryDate >= today && entryDate <= endOfDay;
     }
     return false;
   });
@@ -38,7 +48,28 @@ const calculateBooleanStats = (field, entries, now) => {
 const calculateNumberStats = (field, entries, timeFrame, trackingType) => {
   const value = field.limit?.value || field.target?.value;
   
-  const total = entries.reduce((sum, entry) => {
+  // Filter entries based on timeframe
+  const now = new Date();
+  const filteredEntries = entries.filter(entry => {
+    const entryDate = new Date(entry.date);
+    entryDate.setHours(0, 0, 0, 0);
+    
+    if (timeFrame === 'week') {
+      const weekDates = getCurrentWeekDates();
+      const startOfWeek = weekDates[0];
+      const endOfWeek = new Date(weekDates[6]);
+      endOfWeek.setHours(23, 59, 59, 999);
+      return entryDate >= startOfWeek && entryDate <= endOfWeek;
+    } else if (timeFrame === 'month') {
+      return (
+        entryDate.getMonth() === now.getMonth() &&
+        entryDate.getFullYear() === now.getFullYear()
+      );
+    }
+    return false;
+  });
+
+  const total = filteredEntries.reduce((sum, entry) => {
     const entryValue = parseInt(entry[field.name], 10);
     if (!isNaN(entryValue)) {
       return sum + entryValue;
@@ -58,52 +89,54 @@ const calculateNumberStats = (field, entries, timeFrame, trackingType) => {
 };
 
 const calculateDurationStats = (field, entries, timeFrame, trackingType) => {
-  const targetHours = field.limit?.hours || field.target?.hours || 0;
-  const targetMinutes = field.limit?.minutes || field.target?.minutes || 0;
+  const targetHours = field.target?.hours || field.limit?.hours || 0;
+  const targetMinutes = field.target?.minutes || field.limit?.minutes || 0;
   
-  const total = entries.reduce((sum, entry) => {
+  // Filter entries based on timeframe
+  const now = new Date();
+  const weekDates = getCurrentWeekDates();
+  const startOfWeek = weekDates[0];
+  const endOfWeek = new Date(weekDates[6]);
+  endOfWeek.setHours(23, 59, 59, 999);
+
+  const filteredEntries = entries.filter(entry => {
+    const entryDate = new Date(entry.date);
+    entryDate.setHours(0, 0, 0, 0);
+    
+    if (timeFrame === 'week') {
+      return entryDate >= startOfWeek && entryDate <= endOfWeek;
+    } else if (timeFrame === 'month') {
+      return (
+        entryDate.getMonth() === now.getMonth() &&
+        entryDate.getFullYear() === now.getFullYear()
+      );
+    }
+    return false;
+  });
+
+  const totalMinutes = filteredEntries.reduce((sum, entry) => {
     const hours = parseInt(entry[`${field.name}_hours`], 10) || 0;
     const minutes = parseInt(entry[`${field.name}_minutes`], 10) || 0;
     return sum + (hours * 60 + minutes);
   }, 0);
 
-  const totalHours = Math.floor(total / 60);
-  const totalMinutes = total % 60;
+  const currentHours = Math.floor(totalMinutes / 60);
+  const currentMinutes = totalMinutes % 60;
   const targetTotalMinutes = (targetHours * 60) + targetMinutes;
 
   return {
     fieldName: field.name,
     type: 'duration',
     trackingType,
-    currentHours: totalHours,
-    currentMinutes: totalMinutes,
+    currentHours,
+    currentMinutes,
     targetHours,
     targetMinutes,
     timeFrame,
-    complete: trackingType === 'Set Target' ? total >= targetTotalMinutes : total <= targetTotalMinutes
+    complete: trackingType === 'Set Target' ? 
+      totalMinutes >= targetTotalMinutes : 
+      totalMinutes <= targetTotalMinutes
   };
-};
-
-const getTimeFrameDates = (now, timeFrame) => {
-  const startOfPeriod = new Date(now);
-  let endOfPeriod = new Date(now);
-
-  if (timeFrame === 'week') {
-    startOfPeriod.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1));
-    startOfPeriod.setHours(0, 0, 0, 0);
-    endOfPeriod = new Date(startOfPeriod);
-    endOfPeriod.setDate(startOfPeriod.getDate() + 6);
-    endOfPeriod.setHours(23, 59, 59, 999);
-  } else if (timeFrame === 'month') {
-    startOfPeriod.setDate(1);
-    startOfPeriod.setHours(0, 0, 0, 0);
-    endOfPeriod = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-  } else {
-    startOfPeriod.setHours(0, 0, 0, 0);
-    endOfPeriod.setHours(23, 59, 59, 999);
-  }
-
-  return { startOfPeriod, endOfPeriod };
 };
 
 export const calculateTargetStats = (collection, entries) => {

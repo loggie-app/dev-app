@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Text, ScrollView } from 'react-native';
 import { typography, colors, common } from '../../components/common/styles';
-import { formatDate } from '../../utils/dateUtils';
 
 const CalendarEntryList = ({ entries }) => {
   if (!entries || entries.length === 0) {
@@ -16,31 +15,33 @@ const CalendarEntryList = ({ entries }) => {
     <ScrollView style={{ marginTop: 16 }}>
       {entries.map((entry) => (
         <View
-          key={entry.id}
+          key={`${entry.id}-${entry.collectionName}`}
           style={[common.card, { marginBottom: 8 }]}
         >
           <Text style={[typography.body, { fontWeight: '600' }]}>
             {entry.collectionName}
           </Text>
-          {Object.keys(entry).map((key) => {
-            if (key !== 'id' && key !== 'createdAt' && key !== 'date' && key !== 'collectionName') {
-              // Handle duration fields
-              if (key.endsWith('_hours')) {
-                const baseName = key.replace('_hours', '');
-                const hours = entry[key] || 0;
-                const minutes = entry[`${baseName}_minutes`] || 0;
-                return (
-                  <Text key={baseName} style={typography.body}>
-                    {`${baseName}: ${hours}h ${minutes}m`}
-                  </Text>
-                );
-              } else if (!key.endsWith('_minutes')) {
-                return (
-                  <Text key={key} style={typography.body}>
-                    {`${key}: ${entry[key]}`}
-                  </Text>
-                );
-              }
+          {Object.entries(entry).map(([key, value]) => {
+            if (key === 'id' || key === 'createdAt' || key === 'date' || key === 'collectionName') {
+              return null;
+            }
+
+            // Handle duration fields
+            if (key.endsWith('_hours')) {
+              const baseName = key.replace('_hours', '');
+              const hours = entry[key] || 0;
+              const minutes = entry[`${baseName}_minutes`] || 0;
+              return (
+                <Text key={`${entry.id}-${baseName}`} style={typography.body}>
+                  {`${baseName}: ${hours}h ${minutes}m`}
+                </Text>
+              );
+            } else if (!key.endsWith('_minutes')) {
+              return (
+                <Text key={`${entry.id}-${key}`} style={typography.body}>
+                  {`${key}: ${value}`}
+                </Text>
+              );
             }
             return null;
           })}

@@ -1,19 +1,22 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
   SafeAreaView,
   ScrollView,
   TouchableOpacity,
+  RefreshControl,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import CollectionReportCard from '../components/reports/CollectionReportCard';
 import { typography, colors } from '../components/common/styles';
 import * as collectionService from '../services/collectionService';
+import { useFocusEffect } from '@react-navigation/native';
 
 export default function ReportScreens() {
   const [collections, setCollections] = useState([]);
   const [viewType, setViewType] = useState('weekly');
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState(Date.now());
 
   const loadCollections = async () => {
     try {
@@ -37,8 +40,29 @@ export default function ReportScreens() {
     }
   };
 
-  useEffect(() => {
-    loadCollections();
+  // Refresh when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadCollections();
+      
+      // Set up an interval to refresh data periodically
+      const intervalId = setInterval(() => {
+        setLastUpdate(Date.now());
+        loadCollections();
+      }, 3000); // Refresh every 3 seconds while screen is focused
+
+      return () => {
+        // Clean up interval on screen unfocus
+        clearInterval(intervalId);
+      };
+    }, [])
+  );
+
+  // Handle manual refresh
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadCollections();
+    setRefreshing(false);
   }, []);
 
   return (
@@ -70,7 +94,15 @@ export default function ReportScreens() {
         </View>
       </View>
       
-      <ScrollView>
+      <ScrollView
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+          />
+        }
+      >
         {collections.length === 0 ? (
           <Text style={[typography.body, { textAlign: 'center', marginTop: 16 }]}>
             No collections available.
@@ -79,7 +111,7 @@ export default function ReportScreens() {
           <View style={{ paddingHorizontal: 16 }}>
             {collections.map((collection) => (
               <CollectionReportCard
-                key={collection.id}
+                key={`${collection.id}-${lastUpdate}`}
                 collection={collection}
                 viewType={viewType}
               />

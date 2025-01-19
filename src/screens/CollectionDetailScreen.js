@@ -1,3 +1,5 @@
+// src/screens/CollectionDetailScreen.js
+
 import React, { useEffect, useState } from 'react';
 import { View, Text, SafeAreaView, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { layout, typography, colors, common } from '../components/common/styles';
@@ -16,7 +18,14 @@ export default function CollectionDetailScreen({ route, navigation }) {
   const loadCollectionData = async () => {
     try {
       const collectionData = await collectionService.getCollectionStats(collection);
-      setEntries(collectionData.entries);
+      // Sort entries by date in descending order and add unique key
+      const sortedEntries = collectionData.entries
+        .sort((a, b) => new Date(b.date) - new Date(a.date))
+        .map((entry, index) => ({
+          ...entry,
+          uniqueKey: `${entry.id}-${index}` // Add unique key combining id and index
+        }));
+      setEntries(sortedEntries);
       setStats(collectionData);
     } catch (error) {
       console.error('Error loading collection data:', error);
@@ -37,8 +46,7 @@ export default function CollectionDetailScreen({ route, navigation }) {
   const handleDeleteEntry = async (entryId) => {
     try {
       const updatedEntries = await collectionService.deleteEntry(collection.id, entryId);
-      setEntries(updatedEntries);
-      loadCollectionData(); // Reload stats after deletion
+      loadCollectionData(); // Reload all data after deletion
     } catch (error) {
       console.error('Error deleting entry:', error);
       Alert.alert('Error', 'Failed to delete the entry. Please try again.');
@@ -112,7 +120,7 @@ export default function CollectionDetailScreen({ route, navigation }) {
           ) : (
             entries.map((entry) => (
               <EntryCard
-                key={entry.id}
+                key={entry.uniqueKey} // Use the unique key here
                 entry={entry}
                 onDelete={handleDeleteEntry}
               />
