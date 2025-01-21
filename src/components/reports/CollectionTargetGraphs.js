@@ -8,7 +8,7 @@ import { findBreakpoint, getStartOfWeek } from '../../utils/chartUtils';
 import { convertDurationToMinutes } from '../../utils/durationUtils';
 
 const CollectionTargetGraphs = ({ fields, entries, viewType = 'weekly' }) => {
-  const screenWidth = Dimensions.get('window').width - 40;
+  const screenWidth = Dimensions.get('window').width - 55;
 
   const generateChartData = useMemo(() => (field, timeframe) => {
     const today = new Date();

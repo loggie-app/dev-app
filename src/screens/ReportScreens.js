@@ -108,7 +108,7 @@ export default function ReportScreens() {
             No collections available.
           </Text>
         ) : (
-          <View style={{ paddingHorizontal: 16 }}>
+          <View style={{ paddingHorizontal: 10 }}>
             {collections.map((collection) => (
               <CollectionReportCard
                 key={`${collection.id}-${lastUpdate}`}

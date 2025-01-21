@@ -40,8 +40,8 @@ function HomeStack() {
           <Image 
             source={require('./assets/xP.png')}
             style={{ 
-              height: 40,
-              width: 150,
+              height: 80,
+              width: 60,
               marginTop: 0,
               resizeMode: 'contain',
             }}

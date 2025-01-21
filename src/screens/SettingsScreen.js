@@ -127,10 +127,10 @@ const styles = StyleSheet.create({
   },
   logoHeader: {
     alignItems: 'center',
-    marginVertical: 16,
+    marginVertical: -10,
   },
   appLogo: {
-    height: 40,
+    height: 80,
     width: 150,
   },
   content: {
